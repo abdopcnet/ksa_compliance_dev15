@@ -10,7 +10,8 @@ def map_tax_category(
 ) -> ZatcaTaxCategory:
     if tax_category_id:
         zatca_category, custom_category_reason = frappe.get_value(
-            'Tax Category', {'name': tax_category_id}, ['custom_zatca_category', 'custom_category_reason']
+            'Tax Category', {'name': tax_category_id}, [
+                'custom_zatca_category', 'custom_category_reason']
         )
     elif item_tax_template_id:
         zatca_category, custom_category_reason = frappe.get_value(
@@ -28,7 +29,8 @@ def map_tax_category(
 
     category, reason = zatca_category.split(' || ')
     if custom_category_reason and reason == '{manual entry}':
-        reason_data = _reason_to_code_and_arabic(reason, custom_category_reason)
+        reason_data = _reason_to_code_and_arabic(
+            reason, custom_category_reason)
     else:
         reason_data = _reason_to_code_and_arabic(reason)
     return ZatcaTaxCategory(_category_to_code(category), reason_data['reason_code'], reason_data['arabic_reason'])
