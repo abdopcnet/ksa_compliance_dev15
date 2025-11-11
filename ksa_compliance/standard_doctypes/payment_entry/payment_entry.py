@@ -16,7 +16,7 @@ from result import is_ok
 
 
 def validate_payment_entry(self: PaymentEntry, method: str = None):
-    if not self.custom_prepayment_invoice:
+    if not getattr(self, 'custom_prepayment_invoice', None):
         return
 
     # Force the tax to be Deduct and not included_in_paid_amount
@@ -42,7 +42,7 @@ def validate_payment_entry(self: PaymentEntry, method: str = None):
 
 
 def create_prepayment_invoice_additional_fields_doctype(self: PaymentEntry, method: str = None):
-    if not self.custom_prepayment_invoice:
+    if not getattr(self, 'custom_prepayment_invoice', None):
         logger.info(f"Skipping additional fields for {self.name} because it's not a prepayment invoice")
         return
 
@@ -79,7 +79,7 @@ def _submit_additional_fields(doc: SalesInvoiceAdditionalFields):
 
 def prevent_cancellation_of_prepayment_invoice(self: PaymentEntry, method):
     is_phase_2_enabled_for_company = ZATCABusinessSettings.is_enabled_for_company(self.company)
-    if is_phase_2_enabled_for_company and self.custom_prepayment_invoice:
+    if is_phase_2_enabled_for_company and getattr(self, 'custom_prepayment_invoice', None):
         frappe.throw(
             msg=_('You cannot cancel Prepayment Invoice according to ZATCA Regulations.'),
             title=_('This Action Is Not Allowed'),
