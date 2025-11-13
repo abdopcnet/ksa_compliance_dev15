@@ -8,6 +8,10 @@ frappe.ui.form.on('Customer', {
   },
   refresh: function (frm) {
     add_other_ids_if_new(frm);
+    
+    // تزامن لحظي بين tax_id و custom_vat_registration_number
+    sync_vat_fields(frm);
+    
     // تحقق الحقول أثناء الكتابة
     const fields_to_filter = [
       { field: 'customer_name', label: 'اسم العميل' },
@@ -32,8 +36,16 @@ frappe.ui.form.on('Customer', {
       }
     });
   },
-  tax_id: (frm) =>
-    frm.doc.tax_id && frm.set_value('custom_vat_registration_number', frm.doc.tax_id),
+  tax_id: (frm) => {
+    if (frm.doc.tax_id && frm.doc.tax_id !== frm.doc.custom_vat_registration_number) {
+      frm.set_value('custom_vat_registration_number', frm.doc.tax_id);
+    }
+  },
+  custom_vat_registration_number: (frm) => {
+    if (frm.doc.custom_vat_registration_number && frm.doc.custom_vat_registration_number !== frm.doc.tax_id) {
+      frm.set_value('tax_id', frm.doc.custom_vat_registration_number);
+    }
+  },
   custom_passport_no: (frm) => sync(frm, 'PAS', frm.doc.custom_passport_no),
   before_save: function (frm) {
     const fields_to_filter = [
@@ -75,6 +87,15 @@ frappe.ui.form.on('Customer', {
     }
   },
 });
+
+// دالة لتزامن الحقول الضريبية عند التحديث
+function sync_vat_fields(frm) {
+  if (!frm.doc.tax_id && frm.doc.custom_vat_registration_number) {
+    frm.set_value('tax_id', frm.doc.custom_vat_registration_number);
+  } else if (!frm.doc.custom_vat_registration_number && frm.doc.tax_id) {
+    frm.set_value('custom_vat_registration_number', frm.doc.tax_id);
+  }
+}
 
 function add_other_ids_if_new(frm) {
   // TODO: update permissions for child doctype
