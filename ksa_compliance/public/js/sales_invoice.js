@@ -18,6 +18,49 @@ frappe.ui.form.on('Sales Invoice', {
   async refresh(frm) {
     await set_zatca_integration_status(frm);
     await set_zatca_discount_reason(frm);
+
+    // Add Resend to Zatca button for Administrator only
+    if (frappe.session.user === 'Administrator') {
+      if (frm.doc.custom_integration_status && 
+          frm.doc.custom_integration_status !== 'Accepted' &&
+          frm.doc.custom_integration_status !== 'Accepted with warnings') {
+        frm
+          .add_custom_button(__('Resend To Zatca'), async function () {
+            // البحث عن آخر Sales Invoice Additional Fields المرتبط بهذه الفاتورة
+            let result = await frappe.call({
+              method: 'frappe.client.get_list',
+              args: {
+                doctype: 'Sales Invoice Additional Fields',
+                filters: {
+                  sales_invoice: frm.doc.name,
+                  is_latest: 1,
+                },
+                fields: ['name'],
+                limit_page_length: 1,
+              },
+            });
+
+            if (result.message && result.message.length > 0) {
+              let siaf_name = result.message[0].name;
+              await frappe.call({
+                method:
+                  'ksa_compliance.ksa_compliance.doctype.sales_invoice_additional_fields.sales_invoice_additional_fields.fix_rejection',
+                args: { id: siaf_name },
+                freeze: true,
+                freeze_message: __('Please wait...'),
+              });
+              frappe.show_alert({
+                message: __('Invoice sent to Zatca successfully'),
+                indicator: 'green',
+              });
+              frm.reload_doc();
+            } else {
+              frappe.msgprint(__('No Sales Invoice Additional Fields found for this invoice'));
+            }
+          })
+          .addClass('btn-success');
+      }
+    }
   },
 });
 
