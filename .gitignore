@@ -4,6 +4,6 @@
 *.swp
 tags
 node_modules
-__pycache__
 dist
-.idea/
+__pycache__
+plan.md
