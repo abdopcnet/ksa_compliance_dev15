@@ -173,6 +173,23 @@ class SalesInvoiceAdditionalFields(Document):
 
         return 'Simplified'
 
+    def autoname(self):
+        """Set invoice_counter before autoname runs to ensure unique naming"""
+        if self.precomputed:
+            # For precomputed invoices, invoice_counter is already set
+            return
+        
+        settings = ZATCABusinessSettings.for_invoice(self.sales_invoice, self.invoice_doctype)
+        if settings:
+            # Get the next invoice counter for naming purposes
+            pre_invoice_counter = frappe.db.get_value(
+                'ZATCA Invoice Counting Settings',
+                {'business_settings_reference': settings.name},
+                'invoice_counter'
+            )
+            if pre_invoice_counter is not None:
+                self.invoice_counter = pre_invoice_counter + 1
+
     def before_insert(self):
         self.integration_status = 'Ready For Batch'
         self.is_latest = True
@@ -213,7 +230,9 @@ class SalesInvoiceAdditionalFields(Document):
             for_update=True,
         )[0]
 
-        self.invoice_counter = pre_invoice_counter + 1
+        # invoice_counter is already set in autoname(), just verify and set previous_invoice_hash
+        if not self.invoice_counter:
+            self.invoice_counter = pre_invoice_counter + 1
         self.previous_invoice_hash = pre_invoice_hash
 
         einvoice = Einvoice(sales_invoice_additional_fields_doc=self, invoice_type=invoice_type)
@@ -635,7 +654,7 @@ def fix_rejection(id: str):
         frappe.throw(ft('Missing ZATCA business settings for sales invoice: $invoice', invoice=siaf.sales_invoice))
 
     new_siaf = SalesInvoiceAdditionalFields.create_for_invoice(siaf.sales_invoice, siaf.invoice_doctype)
-    new_siaf.insert()
+    new_siaf.insert(ignore_permissions=True)
 
     if settings.is_live_sync:
         frappe.utils.background_jobs.enqueue(_submit_additional_fields, doc=new_siaf, enqueue_after_commit=True)
