@@ -26,7 +26,7 @@ frappe.ui.form.on('Sales Invoice', {
           frm.doc.custom_integration_status !== 'Accepted with warnings') {
         frm
           .add_custom_button(__('Resend To Zatca'), async function () {
-            // البحث عن آخر Sales Invoice Additional Fields المرتبط بهذه الفاتورة
+            // Find the latest Sales Invoice Additional Fields for this invoice
             let result = await frappe.call({
               method: 'frappe.client.get_list',
               args: {
@@ -42,18 +42,24 @@ frappe.ui.form.on('Sales Invoice', {
 
             if (result.message && result.message.length > 0) {
               let siaf_name = result.message[0].name;
-              await frappe.call({
-                method:
-                  'ksa_compliance.ksa_compliance.doctype.sales_invoice_additional_fields.sales_invoice_additional_fields.fix_rejection',
-                args: { id: siaf_name },
-                freeze: true,
-                freeze_message: __('Please wait...'),
+              let invoice_link = `<a target="_blank" href="${frappe.router.make_url(['Form', 'Sales Invoice', frm.doc.name])}">${frm.doc.name}</a>`;
+              let message = __("<p>This will create a new Sales Invoice Additional Fields document for the invoice '{0}' and " +
+                  "submit it to ZATCA. <strong>Make sure you have updated any bad configuration that lead to the initial rejection</strong>.</p>" +
+                  "<p>Do you want to proceed?</p>", [invoice_link]);
+              
+              frappe.confirm(message, async () => {
+                await frappe.call({
+                  method: 'ksa_compliance.ksa_compliance.doctype.sales_invoice_additional_fields.sales_invoice_additional_fields.fix_rejection',
+                  args: { id: siaf_name },
+                  freeze: true,
+                  freeze_message: __('Please wait...'),
+                });
+                frappe.show_alert({
+                  message: __('New Sales Invoice Additional Fields created and submitted to ZATCA'),
+                  indicator: 'green',
+                });
+                frm.reload_doc();
               });
-              frappe.show_alert({
-                message: __('Invoice sent to Zatca successfully'),
-                indicator: 'green',
-              });
-              frm.reload_doc();
             } else {
               frappe.msgprint(__('No Sales Invoice Additional Fields found for this invoice'));
             }
