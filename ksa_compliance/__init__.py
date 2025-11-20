@@ -6,7 +6,7 @@ logger = get_logger('zatca', max_size=1_000_000)
 logger.setLevel(logging.INFO)
 
 
-__version__ = "17.11.2025"
+__version__ = "20.11.2025"
 
 
 SALES_INVOICE_CODE = '388'
