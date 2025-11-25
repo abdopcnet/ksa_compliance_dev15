@@ -79,7 +79,7 @@ jinja = {
 # ------------
 
 # before_install = "ksa_compliance.install.before_install"
-after_install = 'ksa_compliance.setup.after_install'
+# after_install = 'ksa_compliance.setup.after_install'
 
 # Uninstallation
 # ------------
@@ -262,6 +262,11 @@ scheduler_events = {'hourly_long': ['ksa_compliance.background_jobs.sync_e_invoi
 # ]
 
 # fixtures = [
+# ]
+
+# Migration hooks
+# ----------------
+# before_migrate = [
 # ]
 
 # Auto generate type annotations for doctypes
