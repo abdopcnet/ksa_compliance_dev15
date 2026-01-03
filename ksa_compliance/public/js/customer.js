@@ -23,7 +23,6 @@ frappe.ui.form.on('Customer', {
 	refresh: function (frm) {
 		// Setup real-time validation only (main validation in Python)
 		setup_field_validation(frm);
-		setup_child_table_validation(frm);
 	},
 	tax_id: (frm) => {
 		// Sync tax_id to custom_vat_registration_number (real-time)
@@ -63,51 +62,6 @@ function setup_field_validation(frm) {
 				}
 			});
 		}
-	});
-}
-
-function setup_child_table_validation(frm) {
-	// Setup real-time validation for child table custom_additional_ids value field
-	if (!frm.fields_dict.custom_additional_ids?.grid) return;
-
-	const grid = frm.fields_dict.custom_additional_ids.grid;
-
-	// Add validation when grid refreshes
-	function add_validation_to_rows() {
-		if (grid.grid_rows) {
-			grid.grid_rows.forEach(function (row) {
-				const value_field = row.on_grid_fields_dict?.value;
-				if (
-					value_field &&
-					value_field.$input &&
-					!value_field.$input.data('validation-added')
-				) {
-					value_field.$input.data('validation-added', true);
-					value_field.$input.on('input', function () {
-						if (!ALLOWED_PATTERN.test(this.value)) {
-							frappe.show_alert(
-								{
-									message: __(
-										'Only letters and numbers are allowed in Value field',
-									),
-									indicator: 'orange',
-								},
-								3,
-							);
-							this.value = this.value.replace(/[^a-zA-Z0-9\u0600-\u06FF ]/g, '');
-						}
-					});
-				}
-			});
-		}
-	}
-
-	// Apply validation on refresh
-	add_validation_to_rows();
-
-	// Re-apply validation when grid refreshes
-	grid.wrapper.on('grid-row-render', function () {
-		setTimeout(add_validation_to_rows, 100);
 	});
 }
 
