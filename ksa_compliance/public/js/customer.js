@@ -1,5 +1,6 @@
 // Frontend logging: console.log('[customer.js] method: function_name')
 
+// Constants
 const VALIDATION_FIELDS = [
 	{ field: 'customer_name', label: 'Customer Name' },
 	{ field: 'customer_name_in_arabic', label: 'Customer Name in Arabic' },
@@ -9,6 +10,7 @@ const VALIDATION_FIELDS = [
 const ALLOWED_PATTERN = /^[a-zA-Z0-9\u0600-\u06FF ]*$/;
 const INVALID_PATTERN = /[^a-zA-Z0-9\u0600-\u06FF ]/;
 
+// Form Events
 frappe.ui.form.on('Customer', {
 	setup: function (frm) {
 		// Workaround for a change introduced in frappe v15.38.0: https://github.com/frappe/frappe/issues/27430
@@ -22,11 +24,13 @@ frappe.ui.form.on('Customer', {
 		setup_field_validation(frm);
 	},
 	tax_id: (frm) => {
+		// Sync tax_id to custom_vat_registration_number
 		if (frm.doc.tax_id && frm.doc.tax_id !== frm.doc.custom_vat_registration_number) {
 			frm.set_value('custom_vat_registration_number', frm.doc.tax_id);
 		}
 	},
 	custom_vat_registration_number: (frm) => {
+		// Sync custom_vat_registration_number to tax_id
 		if (
 			frm.doc.custom_vat_registration_number &&
 			frm.doc.custom_vat_registration_number !== frm.doc.tax_id
@@ -36,6 +40,7 @@ frappe.ui.form.on('Customer', {
 	},
 	custom_passport_no: (frm) => sync(frm, 'PAS', frm.doc.custom_passport_no),
 	validate: function (frm) {
+		// Validate fields: only letters, numbers, and Arabic characters allowed
 		const invalid_fields = VALIDATION_FIELDS.filter((obj) => {
 			const value = (frm.doc[obj.field] || '').toString().trim();
 			return value && INVALID_PATTERN.test(value);
@@ -59,8 +64,9 @@ frappe.ui.form.on('Customer', {
 	},
 });
 
-// Setup field validation on input
+// Helper Functions
 function setup_field_validation(frm) {
+	// Setup real-time validation on input: filter invalid characters
 	VALIDATION_FIELDS.forEach(function (obj) {
 		const field = frm.fields_dict[obj.field];
 		if (field && field.$input) {
@@ -82,7 +88,7 @@ function setup_field_validation(frm) {
 }
 
 function add_other_ids_if_new(frm) {
-	// TODO: update permissions for child doctype
+	// Initialize additional IDs list for new customers
 	if (frm.doc.custom_additional_ids.length === 0) {
 		var buyer_id_list = [];
 		buyer_id_list.push(
@@ -136,8 +142,9 @@ function add_other_ids_if_new(frm) {
 }
 
 function sync(frm, code, val) {
+	// Sync passport number to additional IDs table
 	const rows = frm.doc.custom_additional_ids || [];
-	if (!val || !rows.length) return; // No need for any operation if value is empty or no rows exist
+	if (!val || !rows.length) return;
 
 	let updated = false;
 	rows.forEach((row) => {
