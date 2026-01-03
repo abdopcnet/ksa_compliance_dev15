@@ -6,6 +6,9 @@ import re
 # Validation pattern: only letters, numbers, Arabic characters, and spaces
 ALLOWED_PATTERN = re.compile(r'^[a-zA-Z0-9\u0600-\u06FF ]*$')
 INVALID_PATTERN = re.compile(r'[^a-zA-Z0-9\u0600-\u06FF ]')
+# Child table value field: only numbers
+CHILD_VALUE_ALLOWED_PATTERN = re.compile(r'^[0-9]*$')
+CHILD_VALUE_INVALID_PATTERN = re.compile(r'[^0-9]')
 
 # Fields to validate and trim
 VALIDATION_FIELDS = ['customer_name', 'customer_name_in_arabic', 'tax_id', 'custom_vat_registration_number']
@@ -32,20 +35,30 @@ def validate_customer_fields(doc, method):
                 field_label = field_df.label if field_df else field.replace('_', ' ').title()
                 invalid_fields.append(field_label)
 
-    # Validate child table custom_additional_ids value field
+    # Validate child table custom_additional_ids value field (numbers only)
+    invalid_child_fields = []
     if doc.get('custom_additional_ids'):
         for idx, row in enumerate(doc.custom_additional_ids, start=1):
             if row.get('value'):
                 value_str = str(row.value).strip()
-                if value_str and INVALID_PATTERN.search(value_str):
+                if value_str and CHILD_VALUE_INVALID_PATTERN.search(value_str):
                     row_label = f"{_('Additional IDs')} - {_('Row')} {idx} ({row.get('type_name', _('Value'))})"
-                    invalid_fields.append(row_label)
+                    invalid_child_fields.append(row_label)
 
     if invalid_fields:
         frappe.throw(
             _('Only letters and numbers are allowed in the following fields:') +
             '<ul style="margin-top:8px">' +
             ''.join([f'<li>{field}</li>' for field in invalid_fields]) +
+            '</ul>',
+            title=_('Input Error')
+        )
+
+    if invalid_child_fields:
+        frappe.throw(
+            _('Only numbers are allowed in the following fields:') +
+            '<ul style="margin-top:8px">' +
+            ''.join([f'<li>{field}</li>' for field in invalid_child_fields]) +
             '</ul>',
             title=_('Input Error')
         )
