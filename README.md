@@ -1,6 +1,6 @@
 # KSA Compliance
 
-![Version](https://img.shields.io/badge/version-10.12.2025-blue)
+![Version](https://img.shields.io/badge/version-3.1.2026-blue)
 
 
 KSA Compliance is a free and open-source Frappe application designed for full compliance with ZATCA (Saudi Tax Authority) Phase 1 & 2 e-invoicing requirements.
