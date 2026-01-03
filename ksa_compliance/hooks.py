@@ -170,6 +170,7 @@ doc_events = {
         'validate': 'ksa_compliance.standard_doctypes.branch.validate_branch',
     },
     "Customer": {
+        "before_insert": "ksa_compliance.customer_address.initialize_additional_ids",
         "validate": "ksa_compliance.customer_address.validate_customer_fields",
         "after_insert": "ksa_compliance.customer_address.customer_address_link",
         "on_update": "ksa_compliance.customer_address.customer_address_link",
