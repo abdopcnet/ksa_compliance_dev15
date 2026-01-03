@@ -5,6 +5,7 @@ const VALIDATION_FIELDS = [
 	{ field: 'customer_name', label: 'Customer Name' },
 	{ field: 'customer_name_in_arabic', label: 'Customer Name in Arabic' },
 	{ field: 'tax_id', label: 'Tax ID' },
+	{ field: 'custom_vat_registration_number', label: 'VAT Registration Number' },
 ];
 
 const ALLOWED_PATTERN = /^[a-zA-Z0-9\u0600-\u06FF ]*$/;
@@ -20,17 +21,18 @@ frappe.ui.form.on('Customer', {
 		frm.set_df_property('custom_additional_ids', 'cannot_add_rows', 1);
 	},
 	refresh: function (frm) {
-		add_other_ids_if_new(frm);
+		// Setup real-time validation only (main validation in Python)
 		setup_field_validation(frm);
+		setup_child_table_validation(frm);
 	},
 	tax_id: (frm) => {
-		// Sync tax_id to custom_vat_registration_number
+		// Sync tax_id to custom_vat_registration_number (real-time)
 		if (frm.doc.tax_id && frm.doc.tax_id !== frm.doc.custom_vat_registration_number) {
 			frm.set_value('custom_vat_registration_number', frm.doc.tax_id);
 		}
 	},
 	custom_vat_registration_number: (frm) => {
-		// Sync custom_vat_registration_number to tax_id
+		// Sync custom_vat_registration_number to tax_id (real-time)
 		if (
 			frm.doc.custom_vat_registration_number &&
 			frm.doc.custom_vat_registration_number !== frm.doc.tax_id
@@ -39,29 +41,6 @@ frappe.ui.form.on('Customer', {
 		}
 	},
 	custom_passport_no: (frm) => sync(frm, 'PAS', frm.doc.custom_passport_no),
-	validate: function (frm) {
-		// Validate fields: only letters, numbers, and Arabic characters allowed
-		const invalid_fields = VALIDATION_FIELDS.filter((obj) => {
-			const value = (frm.doc[obj.field] || '').toString().trim();
-			return value && INVALID_PATTERN.test(value);
-		});
-
-		if (invalid_fields.length) {
-			frappe.msgprint({
-				title: __('Input Error'),
-				message:
-					__('Only letters and numbers are allowed in the following fields:') +
-					'<ul style="margin-top:8px">' +
-					invalid_fields.map((l) => `<li>${l.label}</li>`).join('') +
-					'</ul>',
-				indicator: 'red',
-			});
-			frappe.validated = false;
-			return false;
-		}
-
-		console.log('[customer.js] method: validate');
-	},
 });
 
 // Helper Functions
@@ -87,62 +66,53 @@ function setup_field_validation(frm) {
 	});
 }
 
-function add_other_ids_if_new(frm) {
-	// Initialize additional IDs list for new customers
-	if (frm.doc.custom_additional_ids.length === 0) {
-		var buyer_id_list = [];
-		buyer_id_list.push(
-			{
-				type_name: 'Tax Identification Number',
-				type_code: 'TIN',
-			},
-			{
-				type_name: 'Commercial Registration Number',
-				type_code: 'CRN',
-			},
-			{
-				type_name: 'MOMRAH License',
-				type_code: 'MOM',
-			},
-			{
-				type_name: 'MHRSD License',
-				type_code: 'MLS',
-			},
-			{
-				type_name: '700 Number',
-				type_code: '700',
-			},
-			{
-				type_name: 'MISA License',
-				type_code: 'SAG',
-			},
-			{
-				type_name: 'National ID',
-				type_code: 'NAT',
-			},
-			{
-				type_name: 'GCC ID',
-				type_code: 'GCC',
-			},
-			{
-				type_name: 'Iqama',
-				type_code: 'IQA',
-			},
-			{
-				type_name: 'Passport ID',
-				type_code: 'PAS',
-			},
-			{
-				type_name: 'Other ID',
-				type_code: 'OTH',
-			},
-		);
-		frm.set_value('custom_additional_ids', buyer_id_list);
+function setup_child_table_validation(frm) {
+	// Setup real-time validation for child table custom_additional_ids value field
+	if (!frm.fields_dict.custom_additional_ids?.grid) return;
+
+	const grid = frm.fields_dict.custom_additional_ids.grid;
+
+	// Add validation when grid refreshes
+	function add_validation_to_rows() {
+		if (grid.grid_rows) {
+			grid.grid_rows.forEach(function (row) {
+				const value_field = row.on_grid_fields_dict?.value;
+				if (
+					value_field &&
+					value_field.$input &&
+					!value_field.$input.data('validation-added')
+				) {
+					value_field.$input.data('validation-added', true);
+					value_field.$input.on('input', function () {
+						if (!ALLOWED_PATTERN.test(this.value)) {
+							frappe.show_alert(
+								{
+									message: __(
+										'Only letters and numbers are allowed in Value field',
+									),
+									indicator: 'orange',
+								},
+								3,
+							);
+							this.value = this.value.replace(/[^a-zA-Z0-9\u0600-\u06FF ]/g, '');
+						}
+					});
+				}
+			});
+		}
 	}
+
+	// Apply validation on refresh
+	add_validation_to_rows();
+
+	// Re-apply validation when grid refreshes
+	grid.wrapper.on('grid-row-render', function () {
+		setTimeout(add_validation_to_rows, 100);
+	});
 }
 
 function sync(frm, code, val) {
-	// Sync passport number to additional IDs table
+	// Sync passport number to additional IDs table (UI-only helper)
 	const rows = frm.doc.custom_additional_ids || [];
 	if (!val || !rows.length) return;
 
