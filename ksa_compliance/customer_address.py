@@ -2,9 +2,21 @@ import frappe
 from frappe import _
 
 
+def validate_customer_fields(doc, method):
+    """Trim whitespace from customer fields."""
+    fields_to_trim = ['customer_name', 'customer_name_in_arabic', 'tax_id']
+    for field in fields_to_trim:
+        if doc.get(field):
+            trimmed = str(doc.get(field)).strip()
+            if doc.get(field) != trimmed:
+                doc.set(field, trimmed)
+
+
 def customer_address_link(doc, method):
     """Create independent customer address based on company address when saving Customer."""
     try:
+        frappe.logger().info(
+            f"[customer_address.py] method: customer_address_link - Customer: {doc.name}, Method: {method}")
         # Get company address (first available company address)
         company_address = frappe.get_all(
             "Address",
