@@ -1,15 +1,74 @@
 import frappe
 from frappe import _
+import re
+
+
+# Validation pattern: only letters, numbers, Arabic characters, and spaces
+ALLOWED_PATTERN = re.compile(r'^[a-zA-Z0-9\u0600-\u06FF ]*$')
+INVALID_PATTERN = re.compile(r'[^a-zA-Z0-9\u0600-\u06FF ]')
+
+# Fields to validate and trim
+VALIDATION_FIELDS = ['customer_name', 'customer_name_in_arabic', 'tax_id', 'custom_vat_registration_number']
 
 
 def validate_customer_fields(doc, method):
-    """Trim whitespace from customer fields."""
-    fields_to_trim = ['customer_name', 'customer_name_in_arabic', 'tax_id']
-    for field in fields_to_trim:
+    """Validate and trim customer fields."""
+    # Trim whitespace
+    for field in VALIDATION_FIELDS:
         if doc.get(field):
             trimmed = str(doc.get(field)).strip()
             if doc.get(field) != trimmed:
                 doc.set(field, trimmed)
+
+    # Validate field values: only letters, numbers, and Arabic characters
+    invalid_fields = []
+    meta = frappe.get_meta(doc.doctype)
+    for field in VALIDATION_FIELDS:
+        value = doc.get(field)
+        if value:
+            value_str = str(value).strip()
+            if value_str and INVALID_PATTERN.search(value_str):
+                field_df = meta.get_field(field)
+                field_label = field_df.label if field_df else field.replace('_', ' ').title()
+                invalid_fields.append(field_label)
+
+    # Validate child table custom_additional_ids value field
+    if doc.get('custom_additional_ids'):
+        for idx, row in enumerate(doc.custom_additional_ids, start=1):
+            if row.get('value'):
+                value_str = str(row.value).strip()
+                if value_str and INVALID_PATTERN.search(value_str):
+                    row_label = f"{_('Additional IDs')} - {_('Row')} {idx} ({row.get('type_name', _('Value'))})"
+                    invalid_fields.append(row_label)
+
+    if invalid_fields:
+        frappe.throw(
+            _('Only letters and numbers are allowed in the following fields:') +
+            '<ul style="margin-top:8px">' +
+            ''.join([f'<li>{field}</li>' for field in invalid_fields]) +
+            '</ul>',
+            title=_('Input Error')
+        )
+
+
+def initialize_additional_ids(doc, method):
+    """Initialize additional IDs list for new customers."""
+    if doc.is_new() and len(doc.get('custom_additional_ids', [])) == 0:
+        buyer_id_list = [
+            {'type_name': 'Tax Identification Number', 'type_code': 'TIN'},
+            {'type_name': 'Commercial Registration Number', 'type_code': 'CRN'},
+            {'type_name': 'MOMRAH License', 'type_code': 'MOM'},
+            {'type_name': 'MHRSD License', 'type_code': 'MLS'},
+            {'type_name': '700 Number', 'type_code': '700'},
+            {'type_name': 'MISA License', 'type_code': 'SAG'},
+            {'type_name': 'National ID', 'type_code': 'NAT'},
+            {'type_name': 'GCC ID', 'type_code': 'GCC'},
+            {'type_name': 'Iqama', 'type_code': 'IQA'},
+            {'type_name': 'Passport ID', 'type_code': 'PAS'},
+            {'type_name': 'Other ID', 'type_code': 'OTH'},
+        ]
+        for item in buyer_id_list:
+            doc.append('custom_additional_ids', item)
 
 
 def customer_address_link(doc, method):
