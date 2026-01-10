@@ -65,7 +65,7 @@ def execute(filters=None):
 
 def get_zatca_integration_details_data(filters):
     query = """
-                SELECT 
+                SELECT
                     inv.name AS invoice_id,
                     IFNULL(zi.integration_status,'N/A') integration_status,
                     inv.posting_date,
