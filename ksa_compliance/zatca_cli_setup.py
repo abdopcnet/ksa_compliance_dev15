@@ -107,7 +107,7 @@ def _extract_filename_from_headers(headers: CaseInsensitiveDict[str]) -> Result[
     if not parts[1].startswith('filename='):
         return Err(ft("'Content-Disposition' header doesn't specify a file name"))
 
-    filename = parts[1][len('filename=') :].strip('"')
+    filename = parts[1][len('filename='):].strip('"')
     if not filename:
         return Err(ft("'Content-Disposition' header doesn't specify a file name"))
 
