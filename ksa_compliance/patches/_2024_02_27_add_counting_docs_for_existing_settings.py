@@ -31,7 +31,7 @@ def execute():
                     LEFT JOIN `tabSales Invoice` AS si
                     ON ad.sales_invoice = si.name
                     WHERE si.company = %(company)s
-                    AND ad.invoice_counter = %(max_counter)s            
+                    AND ad.invoice_counter = %(max_counter)s
                 """,
                     {'max_counter': max_invoice_counter, 'company': setting.company},
                     as_dict=1,
