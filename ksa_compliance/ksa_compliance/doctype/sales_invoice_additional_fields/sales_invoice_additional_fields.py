@@ -178,7 +178,7 @@ class SalesInvoiceAdditionalFields(Document):
         if self.precomputed:
             # For precomputed invoices, invoice_counter is already set
             return
-        
+
         settings = ZATCABusinessSettings.for_invoice(self.sales_invoice, self.invoice_doctype)
         if settings:
             # Get the next invoice counter for naming purposes
