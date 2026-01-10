@@ -23,22 +23,15 @@ frappe.ui.form.on('Customer', {
 	onload: function (frm) {
 		// Initialize Additional Buyer IDs table for existing customers if empty
 		if (!frm.is_new()) {
-			const has_no_rows =
-				!frm.doc.custom_additional_ids || frm.doc.custom_additional_ids.length === 0;
-
-			if (has_no_rows) {
-				frappe.call({
-					method: 'ksa_compliance.customer_address.initialize_customer_additional_ids',
-					args: {
-						customer: frm.doc.name,
-					},
-					callback: function (r) {
-						if (r.message && r.message.status === 'initialized') {
-							frm.reload_doc();
-						}
-					},
-				});
-			}
+			frappe.call({
+				method: 'ksa_compliance.customer_address.initialize_customer_additional_ids',
+				args: { customer: frm.doc.name },
+				callback: function (r) {
+					if (r.message?.status === 'initialized') {
+						frm.reload_doc();
+					}
+				},
+			});
 		}
 	},
 	refresh: function (frm) {
