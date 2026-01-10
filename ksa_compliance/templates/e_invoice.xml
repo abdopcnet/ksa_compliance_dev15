@@ -194,7 +194,7 @@
                 </cac:TaxCategory>
             </cac:TaxSubtotal>
         {% endfor %}
-        
+
     </cac:TaxTotal>
 
     <cac:LegalMonetaryTotal>
@@ -318,7 +318,7 @@
             </cac:ClassifiedTaxCategory>
         </cac:Item>
         <cac:Price>
-            <cbc:PriceAmount currencyID="{{prepayment_invoice.currency}}">0.00</cbc:PriceAmount> 
+            <cbc:PriceAmount currencyID="{{prepayment_invoice.currency}}">0.00</cbc:PriceAmount>
 
         </cac:Price>
     </cac:InvoiceLine>
