@@ -3,22 +3,22 @@ import frappe
 
 def execute():
     """Create branch_cr_no field on Sales Invoice if Branch accounting dimension exists."""
-    
+
     check_and_create_branch_cr_no_field()
     frappe.db.commit()
 
 
 def check_and_create_branch_cr_no_field():
     """Check Branch accounting dimension and create branch_cr_no field if needed"""
-    
+
     try:
         # Check if Branch accounting dimension exists
         branch_accounting_dimension = frappe.get_all(
-            "Accounting Dimension", 
-            filters={"document_type": "Branch"}, 
+            "Accounting Dimension",
+            filters={"document_type": "Branch"},
             fields=["name", "document_type", "label", "disabled"]
         )
-        
+
         if branch_accounting_dimension:
             dimension = branch_accounting_dimension[0]
             if dimension.get('disabled'):
@@ -31,20 +31,20 @@ def check_and_create_branch_cr_no_field():
         else:
             print("ℹ Branch accounting dimension not found")
             print("Branch CR field will not be created")
-            
+
     except Exception as e:
         print(f"Error checking Branch accounting dimension: {e}")
 
 
 def create_branch_cr_no_field_if_needed():
     """Create or update branch_cr_no field if needed"""
-    
+
     field_name = "Sales Invoice-branch_cr_no"
-    
+
     # Check if field exists
     if frappe.db.exists('Custom Field', field_name):
         print(f"✓ Field {field_name} already exists, updating properties...")
-        
+
         # Update existing field properties
         existing_field = frappe.get_doc('Custom Field', field_name)
         existing_field.fetch_from = "branch.custom_cr_no"
@@ -56,12 +56,12 @@ def create_branch_cr_no_field_if_needed():
         existing_field.save(ignore_permissions=True)
         print(f"✓ Updated {field_name} field successfully")
         return
-    
+
     # Check if Branch-custom_cr_no exists
     if not frappe.db.exists('Custom Field', 'Branch-custom_cr_no'):
         print("✗ Branch-custom_cr_no field not found, cannot create branch_cr_no with fetch_from")
         return
-    
+
     try:
         # Create the field
         field = frappe.new_doc('Custom Field')
