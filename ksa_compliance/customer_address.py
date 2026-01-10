@@ -86,41 +86,64 @@ def initialize_additional_ids(doc, method):
 
 @frappe.whitelist()
 def initialize_customer_additional_ids(customer):
-    """Initialize Additional Buyer IDs table for existing customer if empty."""
+    """Initialize Additional Buyer IDs table for existing customer if empty.
+    Adds rows directly to database without modifying the parent document."""
     try:
         if not frappe.db.exists('Customer', customer):
             return {'status': 'error', 'message': 'Customer not found'}
 
-        customer_doc = frappe.get_doc('Customer', customer)
+        # Check if table already has rows
+        existing_rows = frappe.db.sql("""
+            SELECT COUNT(*) as count
+            FROM `tabAdditional Buyer IDs`
+            WHERE parent = %s
+        """, (customer,), as_dict=True)
 
-        # Check if table is empty
-        has_no_rows = not customer_doc.get('custom_additional_ids') or len(
-            customer_doc.get('custom_additional_ids', [])) == 0
+        if existing_rows[0]['count'] > 0:
+            return {'status': 'ok', 'message': 'Table already exists'}
 
-        if has_no_rows:
-            # Initialize all standard rows
-            buyer_id_list = [
-                {'type_name': 'Tax Identification Number', 'type_code': 'TIN'},
-                {'type_name': 'Commercial Registration Number', 'type_code': 'CRN'},
-                {'type_name': 'MOMRAH License', 'type_code': 'MOM'},
-                {'type_name': 'MHRSD License', 'type_code': 'MLS'},
-                {'type_name': '700 Number', 'type_code': '700'},
-                {'type_name': 'MISA License', 'type_code': 'SAG'},
-                {'type_name': 'National ID', 'type_code': 'NAT'},
-                {'type_name': 'GCC ID', 'type_code': 'GCC'},
-                {'type_name': 'Iqama', 'type_code': 'IQA'},
-                {'type_name': 'Passport ID', 'type_code': 'PAS'},
-                {'type_name': 'Other ID', 'type_code': 'OTH'},
-            ]
-            for item in buyer_id_list:
-                customer_doc.append('custom_additional_ids', item)
+        # Initialize all standard rows directly in database without modifying parent
+        buyer_id_list = [
+            {'type_name': 'Tax Identification Number', 'type_code': 'TIN'},
+            {'type_name': 'Commercial Registration Number', 'type_code': 'CRN'},
+            {'type_name': 'MOMRAH License', 'type_code': 'MOM'},
+            {'type_name': 'MHRSD License', 'type_code': 'MLS'},
+            {'type_name': '700 Number', 'type_code': '700'},
+            {'type_name': 'MISA License', 'type_code': 'SAG'},
+            {'type_name': 'National ID', 'type_code': 'NAT'},
+            {'type_name': 'GCC ID', 'type_code': 'GCC'},
+            {'type_name': 'Iqama', 'type_code': 'IQA'},
+            {'type_name': 'Passport ID', 'type_code': 'PAS'},
+            {'type_name': 'Other ID', 'type_code': 'OTH'},
+        ]
 
-            customer_doc.save(ignore_permissions=True)
-            frappe.db.commit()
-            return {'status': 'initialized', 'message': 'Additional Buyer IDs initialized successfully'}
+        # Insert rows directly into database without modifying parent document
+        # Use NOW() in SQL to avoid updating parent document modified field
+        current_user = frappe.session.user or 'Administrator'
+        for idx, item in enumerate(buyer_id_list, start=1):
+            row_name = frappe.generate_hash(length=10)
+            frappe.db.sql("""
+                INSERT INTO `tabAdditional Buyer IDs`
+                (name, creation, modified, modified_by, owner, docstatus, idx,
+                 type_name, type_code, value, parent, parentfield, parenttype)
+                VALUES
+                (%(name)s, NOW(), NOW(), %(modified_by)s, %(owner)s, 0, %(idx)s,
+                 %(type_name)s, %(type_code)s, '', %(parent)s, 'custom_additional_ids', 'Customer')
+            """, {
+                'name': row_name,
+                'modified_by': current_user,
+                'owner': current_user,
+                'idx': idx,
+                'type_name': item['type_name'],
+                'type_code': item['type_code'],
+                'parent': customer,
+            })
 
-        return {'status': 'ok', 'message': 'Table already exists'}
+        frappe.db.commit()
+        return {'status': 'initialized', 'message': 'Additional Buyer IDs initialized successfully'}
+
     except Exception as e:
+        frappe.db.rollback()
         frappe.log_error(
             message=f"Error initializing Additional Buyer IDs for Customer {customer}: {str(e)}\n{frappe.get_traceback()}",
             title=_("initialize_customer_additional_ids failed")
