@@ -84,6 +84,50 @@ def initialize_additional_ids(doc, method):
             doc.append('custom_additional_ids', item)
 
 
+@frappe.whitelist()
+def initialize_customer_additional_ids(customer):
+    """Initialize Additional Buyer IDs table for existing customer if empty."""
+    try:
+        if not frappe.db.exists('Customer', customer):
+            return {'status': 'error', 'message': 'Customer not found'}
+
+        customer_doc = frappe.get_doc('Customer', customer)
+
+        # Check if table is empty
+        has_no_rows = not customer_doc.get('custom_additional_ids') or len(
+            customer_doc.get('custom_additional_ids', [])) == 0
+
+        if has_no_rows:
+            # Initialize all standard rows
+            buyer_id_list = [
+                {'type_name': 'Tax Identification Number', 'type_code': 'TIN'},
+                {'type_name': 'Commercial Registration Number', 'type_code': 'CRN'},
+                {'type_name': 'MOMRAH License', 'type_code': 'MOM'},
+                {'type_name': 'MHRSD License', 'type_code': 'MLS'},
+                {'type_name': '700 Number', 'type_code': '700'},
+                {'type_name': 'MISA License', 'type_code': 'SAG'},
+                {'type_name': 'National ID', 'type_code': 'NAT'},
+                {'type_name': 'GCC ID', 'type_code': 'GCC'},
+                {'type_name': 'Iqama', 'type_code': 'IQA'},
+                {'type_name': 'Passport ID', 'type_code': 'PAS'},
+                {'type_name': 'Other ID', 'type_code': 'OTH'},
+            ]
+            for item in buyer_id_list:
+                customer_doc.append('custom_additional_ids', item)
+
+            customer_doc.save(ignore_permissions=True)
+            frappe.db.commit()
+            return {'status': 'initialized', 'message': 'Additional Buyer IDs initialized successfully'}
+
+        return {'status': 'ok', 'message': 'Table already exists'}
+    except Exception as e:
+        frappe.log_error(
+            message=f"Error initializing Additional Buyer IDs for Customer {customer}: {str(e)}\n{frappe.get_traceback()}",
+            title=_("initialize_customer_additional_ids failed")
+        )
+        return {'status': 'error', 'message': str(e)}
+
+
 def customer_address_link(doc, method):
     """Create independent customer address based on company address when saving Customer."""
     try:
