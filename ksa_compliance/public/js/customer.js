@@ -20,6 +20,27 @@ frappe.ui.form.on('Customer', {
 		frm.set_df_property('custom_additional_ids', 'cannot_delete_rows', 1);
 		frm.set_df_property('custom_additional_ids', 'cannot_add_rows', 1);
 	},
+	onload: function (frm) {
+		// Initialize Additional Buyer IDs table for existing customers if empty
+		if (!frm.is_new()) {
+			const has_no_rows =
+				!frm.doc.custom_additional_ids || frm.doc.custom_additional_ids.length === 0;
+
+			if (has_no_rows) {
+				frappe.call({
+					method: 'ksa_compliance.customer_address.initialize_customer_additional_ids',
+					args: {
+						customer: frm.doc.name,
+					},
+					callback: function (r) {
+						if (r.message && r.message.status === 'initialized') {
+							frm.reload_doc();
+						}
+					},
+				});
+			}
+		}
+	},
 	refresh: function (frm) {
 		// Setup real-time validation only (main validation in Python)
 		setup_field_validation(frm);
